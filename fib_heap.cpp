@@ -1,6 +1,6 @@
 using namespace std;
 #include <iostream>
-#include <cmath>        
+#include <cmath>
 #include <string>
 #include <sstream>
 
@@ -52,11 +52,12 @@ class FibHeap {
 			min_ = newNode;
 		}
 		else {
+			
 			//Merge the new node with the old root list
 			min_ = mergeLists(min_, newNode);	
 		}
 	}
-	
+
 	//Merge two lists pointed to by the input parameters. Returns a node in the new list
 	Node * mergeLists(Node * a, Node * b){
 		//When atleast one of the input lists is null
@@ -77,7 +78,12 @@ class FibHeap {
 		a->r_sib->l_sib = a;
 		b->r_sib->l_sib = b;
 		
-		return a;
+		return (a->data < b->data) ? a : b;
+	}
+	
+	int getMin(){
+		if (min_)
+			return min_->data;
 	}
 	
 	// Overloaded << operator for pretty printing the state of the heap
@@ -118,10 +124,10 @@ int main() {
 	FibHeap fib;
 	cout << fib;
 	fib.insertNode(5);
-	cout << fib;
+	cout << fib << "Min : " << fib.getMin();
 	fib.insertNode(10);
-	cout << fib;
-	fib.insertNode(15);
-	cout << fib;
+	cout << fib << "Min : " << fib.getMin();
+	fib.insertNode(2);
+	cout << fib << "Min : " << fib.getMin();
 	return 0;
 }

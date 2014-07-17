@@ -1,6 +1,6 @@
 using namespace std;
-#include <iostream>        // This is a key C++ library
-#include <cmath>           // The standard C library math.h
+#include <iostream>
+#include <cmath>        
 #include <string>
 #include <sstream>
 
@@ -56,7 +56,8 @@ class FibHeap {
 			min_ = mergeLists(min_, newNode);	
 		}
 	}
-
+	
+	//Merge two lists pointed to by the input parameters. Returns a node in the new list
 	Node * mergeLists(Node * a, Node * b){
 		//When atleast one of the input lists is null
 		if (!a && !b)
@@ -79,6 +80,7 @@ class FibHeap {
 		return a;
 	}
 	
+	// Overloaded << operator for pretty printing the state of the heap
 	friend ostream& operator<<(ostream &strm, const FibHeap &f) {
 		
 		//In case of an empty heap

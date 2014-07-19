@@ -7,6 +7,7 @@ using namespace std;
 #include <climits>
 #include <vector>
 #include <queue>
+#include <stdlib.h>
 
 #define tr(container, it) for(typeof(container.begin()) it = container.begin(); it != container.end(); it++)
 #define all(c) c.begin(), c.end() 
@@ -284,19 +285,6 @@ class FibHeap {
 			}
 		}
 
-		/*
-		//Print right
-		result << "\nSize: "<< f.size_ << "\nRight siblings: ";
-		do {
-			result << temp->data; 
-			if (temp->child) result << "(" << temp->child->data << ")";
-			result << " -> "	;
-			temp = temp->r_sib;
-		} while (temp != f.min_);
-		result << temp->data;
-		result << '\n';
-		*/
-		
 		//Print left
 		result << "Left siblings: ";
 		temp = f.min_;
@@ -311,27 +299,57 @@ class FibHeap {
 	}
 };
 
-int main() {
+
+void test_sequential_random_Insert_DeleteMin(){
 	FibHeap fib;
-	cout << fib;
+	priority_queue<int> ref_q;
+	int NUM_NODES = 100000;
+	
+	for (int i = 0; i < NUM_NODES; i++){
+		int curr = 	rand();
+		fib.insertNode(curr);
+		ref_q.push(-curr);			
+		}
 
-	//Test DeleteMin
+	for (int i = 0; i < NUM_NODES; i++){
+		int val= fib.deleteMin();
+		int ref = -ref_q.top();
+		ref_q.pop();
+	
+		if (val != ref){
+			cout << "\n Our value: " << val << " Ref Value: " << ref;
+			return;
+		}
+	}
+	cout << "\n Sequential Insert then Delete Succeeded";
+
+	for (int i = 0; i < NUM_NODES; i++){
+		int curr = 	rand();
+		fib.insertNode(curr);
+		ref_q.push(-curr);			
+		if (i%50 == 0){
+		int num_deletes = rand() % fib.getSize();
+			for (int j = 0; j < num_deletes; j++){
+				int val= fib.deleteMin();
+				int ref = -ref_q.top();
+				ref_q.pop();
+			
+				if (val != ref){
+					cout << "\n Random : Our value: " << val << " Ref Value: " << ref;
+					return;
+				}
+			}
+		}
+	}
+	cout << "\n Random Insert and Delete Succeeded";
+
+}
+
+int main() {
+	test_sequential_random_Insert_DeleteMin();
+	
 	/*
-	fib.insertNode(5);
-	cout << fib << "Min : " << fib.getMin() << '\n';
-	cout << "\nDeleting " << fib.deleteMin() << '\n';
-	cout << fib << "Min : " << fib.getMin() << '\n';
-	fib.insertNode(10);
-	cout << fib << "Min : " << fib.getMin() << '\n';
-	fib.insertNode(2);
-	cout << fib << "Min : " << fib.getMin() << '\n';
-	cout << "\nDeleting " << fib.deleteMin() << '\n';
-	cout << fib << "Min : " << fib.getMin() << '\n';
-	cout << "\nDeleting " << fib.deleteMin() << '\n';
-	cout << fib << "Min : " << fib.getMin() << '\n';
-	return 0;
-	*/
-
+	FibHeap fib;
 	fib.insertNode(5);
 	fib.deleteMin();
 	cout << fib << "Min : " << fib.getMin() << '\n';
@@ -344,5 +362,5 @@ int main() {
 	cout << fib << "Min : " << fib.getMin() << '\n';
 	fib.deleteMin();
 	cout << fib << "Min : " << fib.getMin() << '\n';
-
+	*/
 }

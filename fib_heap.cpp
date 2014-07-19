@@ -8,6 +8,12 @@ using namespace std;
 #include <vector>
 #include <queue>
 #include <stdlib.h>
+#include <map>
+#include "boost/heap/fibonacci_heap.hpp"
+
+using boost::heap::fibonacci_heap;
+
+typedef fibonacci_heap<int, boost::heap::compare<std::greater<int> > > boost_heap;	
 
 #define tr(container, it) for(typeof(container.begin()) it = container.begin(); it != container.end(); it++)
 #define all(c) c.begin(), c.end() 
@@ -44,8 +50,8 @@ class FibHeap {
 	private:
 		Node * min_;
 		unsigned int size_;
-		unsigned int num_roots_;
-		
+		map<int, Node*> index_;
+				
 	public:
 	FibHeap() : min_ (NULL) , size_() {};
 	
@@ -63,8 +69,11 @@ class FibHeap {
 			min_ = mergeLists(min_, newNode);	
 		}
 		
+		//insert it into the index
+		index_[val] = newNode;
+		
+		//Increment size of heap
 		size_++;
-		num_roots_++;
 	}
 
 	//Merge two lists pointed to by the input parameters. Returns the smaller node
@@ -126,7 +135,12 @@ class FibHeap {
 			//throw invalid_argument("\n Cannot delete from empty heap");
 		}
 		
-		Node * deletedNode = min_; 
+		Node * deletedNode = min_;
+		
+		//Remove from index
+		index_.erase(min_->data);
+		
+		//Decrement size of heap 
 		size_--;
 		
 		//Get a handle to the remaining list;
@@ -155,15 +169,15 @@ class FibHeap {
 	
 	//Performs consolidation of all the nodes in the root list pointed to by min_
 	//Fixes min list with no root of the same rank
-		void consolidateList(){
-		
+	void consolidateList(){
+	
 		// Start with the bound = log_2[size] possible ranks in the tree
 		// Expanded if we encounter higher ranks
 		vector<Node *> rank_to_nodes (int(log2(size_)) + 1);
-	
+
 		//If singleton tree
 		if (min_->r_sib == min_) return;
-	
+
 		/* We need to ensure we don't go over the same node twice. 
 		* Here we choose to go with a high memory overhead vs. a runtime overhead.
 		* We go through and store all the nodes in the root list in a fixed array
@@ -185,7 +199,7 @@ class FibHeap {
 			
 			//Ensure the rank list is big enough
 			if (curr->rank >= rank_to_nodes.size()) rank_to_nodes.resize(curr->rank+1);
-	
+
 			// If it is the first node of its rank, just add it
 			if (!rank_to_nodes[curr->rank]){
 				rank_to_nodes[curr->rank] = curr;
@@ -232,12 +246,59 @@ class FibHeap {
 		//Increase the rank of the smaller node
 		min->rank++;
 		
-		//Decrease the number nodes in the root note 
-		// ASSUMES LINKING IS ONLY EVER DONE FOR ROOT LIST
-		num_roots_--;
-		
 		return min;
 	}
+	
+	void decreaseKey(int old_key, int new_key){
+		//Find the node corresponding to the key
+		Node *curr = index_[old_key];
+		
+		//Update key
+		curr->data = new_key;
+		
+		//Update index
+		index_.erase(old_key);
+		index_[new_key] = curr;
+		
+		//Check if heap order violated
+		if (curr->parent){
+			if (curr->parent->data > curr->data) cutNode(curr);
+		}
+		
+		//Make sure min is updated if necessary
+		if (curr->data < min_->data) min_=curr;
+		
+	}
+	//Recursively cut and and mark nodes until we hit the root list
+	void cutNode(Node *to_cut){
+		to_cut->isMarked = false;
+		
+		//If we hit a root, stop the cuts
+		if (!to_cut->parent) return;
+		
+		//If it was the node that its parent pointed to, change the parent's child pointer
+		if (to_cut->parent->child == to_cut){
+			if (to_cut->r_sib == to_cut) to_cut->parent->child = NULL;
+			else to_cut->parent->child = to_cut->r_sib;
+		}
+		
+		//Remove the node from its list
+		removeNode(to_cut);
+		
+		//Merge it with the root list
+		min_ = mergeLists(min_, to_cut);
+		
+		//Decrease parents degree
+		to_cut->parent->rank--;
+		
+		//Recursive call
+		if (!to_cut->parent->isMarked) to_cut->parent->isMarked = true;
+		else cutNode(to_cut->parent);
+		
+		//Set parent to null since it is in root list
+		to_cut->parent = NULL;
+	}
+	
 	
 	void testLink(){
 		min_ = link(min_,min_->r_sib);
@@ -299,8 +360,91 @@ class FibHeap {
 	}
 };
 
+void test_decrease_key(){
+	FibHeap fib;
+	int NUM_NODES = 100;
+	
+	boost_heap pq;	
+	map<int, boost_heap::handle_type> index;
+	vector<int> keys;
+	set<int> keyset;  // Used for getting logarithmic random generation and duplicate detection
+	
+	for (int i = 0; i < NUM_NODES; i++){
+		unsigned int curr = 	rand();
+		if (present(keyset, curr)) continue;
+		
+		fib.insertNode(curr);
+		index[curr]=pq.push(curr);			
+		keys.push_back(curr);
+		keyset.insert(curr);
+		
+		if (i % 25 == 0){
+			//Do some random decrease keys
+			for (int j = 0; j < 20; j++){
+				//Pick a key to change
+				unsigned int to_change_index = rand() % keys.size(); 
+				unsigned int to_change_val = keys[to_change_index];
+				
+				if (to_change_val == 0) continue;
+
+				//Find a smaller value to change to which doesnt already exist
+				// Or try for a bit
+				unsigned int new_val = rand() % to_change_val;
+				
+				for (int k = 0; k < 100; k++){
+				 if (present(keyset, new_val))
+				  new_val = rand() % to_change_val;
+				 else break;
+				}
+				if (present(keyset,new_val)) continue;
+				
+				//replace the old value with new one
+				keys[to_change_index] = new_val;
+				keyset.erase(to_change_val);
+				keyset.insert(new_val);
+				
+				//perform operation on heaps
+				pq.decrease(index[to_change_val],new_val);
+				index[new_val] = index[to_change_val];
+				index.erase(to_change_val);
+				
+				fib.decreaseKey(to_change_val, new_val);
+				
+			}
+		}
+		
+		if (i%50 == 0){
+			int num_deletes = rand() % fib.getSize()+1;
+			for (int j = 0; j < num_deletes; j++){
+				unsigned int val= fib.deleteMin();
+				unsigned int ref = pq.top();
+				pq.pop();
+			
+				if (val != ref){
+					cout << "\n Random : Our value: " << val << " Ref Value: " << ref;
+					return;
+				}
+				
+				keyset.erase(val);
+				
+				std::vector<int>::iterator position = std::find(keys.begin(), keys.end(), val);
+				if (position != keys.end()) // == vector.end() means the element was not found
+    				keys.erase(position);
+				else cout << "Should never get here, keys messed up";
+				
+				index.erase(val);
+			}
+		}
+			
+	}
+	
+	
+cout <<"Test completed";
+	
+}
 
 void test_sequential_random_Insert_DeleteMin(){
+	
 	FibHeap fib;
 	priority_queue<int> ref_q;
 	int NUM_NODES = 100000;
@@ -328,7 +472,7 @@ void test_sequential_random_Insert_DeleteMin(){
 		fib.insertNode(curr);
 		ref_q.push(-curr);			
 		if (i%50 == 0){
-		int num_deletes = rand() % fib.getSize();
+		int num_deletes = rand() % fib.getSize()+1;
 			for (int j = 0; j < num_deletes; j++){
 				int val= fib.deleteMin();
 				int ref = -ref_q.top();
@@ -346,7 +490,7 @@ void test_sequential_random_Insert_DeleteMin(){
 }
 
 int main() {
-	test_sequential_random_Insert_DeleteMin();
+	//test_sequential_random_Insert_DeleteMin();
 	
 	/*
 	FibHeap fib;
@@ -362,5 +506,9 @@ int main() {
 	cout << fib << "Min : " << fib.getMin() << '\n';
 	fib.deleteMin();
 	cout << fib << "Min : " << fib.getMin() << '\n';
+	fib.decreaseKey(8,4);
+	cout << fib << "Min : " << fib.getMin() << '\n';
 	*/
+	
+	test_decrease_key();
 }
